@@ -868,7 +868,12 @@ static int enqueue_hrtimer(struct hrtimer *timer,
 
 	base->cpu_base->active_bases |= 1 << base->index;
 
+<<<<<<< HEAD
 	timer->state |= HRTIMER_STATE_ENQUEUED;
+=======
+	/* Pairs with the lockless read in hrtimer_is_queued() */
+	WRITE_ONCE(timer->state, HRTIMER_STATE_ENQUEUED);
+>>>>>>> v4.14.291
 
 	return timerqueue_add(&base->active, &timer->node);
 }
@@ -889,8 +894,15 @@ static void __remove_hrtimer(struct hrtimer *timer,
 {
 	struct hrtimer_cpu_base *cpu_base = base->cpu_base;
 
+<<<<<<< HEAD
 	if (!(timer->state & HRTIMER_STATE_ENQUEUED))
 		goto out;
+=======
+	/* Pairs with the lockless read in hrtimer_is_queued() */
+	WRITE_ONCE(timer->state, newstate);
+	if (!(state & HRTIMER_STATE_ENQUEUED))
+		return;
+>>>>>>> v4.14.291
 
 	if (!timerqueue_del(&base->active, &timer->node))
 		cpu_base->active_bases &= ~(1 << base->index);
@@ -922,8 +934,9 @@ out:
 static inline int
 remove_hrtimer(struct hrtimer *timer, struct hrtimer_clock_base *base, bool restart)
 {
-	if (hrtimer_is_queued(timer)) {
-		u8 state = timer->state;
+	u8 state = timer->state;
+
+	if (state & HRTIMER_STATE_ENQUEUED) {
 		int reprogram;
 
 		/*
@@ -1599,9 +1612,9 @@ long hrtimer_nanosleep(const struct timespec64 *rqtp,
 	}
 
 	restart = &current->restart_block;
-	restart->fn = hrtimer_nanosleep_restart;
 	restart->nanosleep.clockid = t.timer.base->clockid;
 	restart->nanosleep.expires = hrtimer_get_expires_tv64(&t.timer);
+	set_restart_fn(restart, hrtimer_nanosleep_restart);
 out:
 	destroy_hrtimer_on_stack(&t.timer);
 	return ret;

@@ -417,6 +417,10 @@ int wil_suspend(struct wil6210_priv *wil, bool is_runtime, bool keep_radio_on)
 int wil_resume(struct wil6210_priv *wil, bool is_runtime, bool keep_radio_on)
 {
 	int rc = 0;
+<<<<<<< HEAD
+=======
+	unsigned long long suspend_time_usec = 0;
+>>>>>>> v4.14.291
 
 	wil_dbg_pm(wil, "resume: %s\n", is_runtime ? "runtime" : "system");
 

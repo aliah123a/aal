@@ -48,6 +48,7 @@
 #define data2w		w4
 #define tmp1		x5
 
+<<<<<<< HEAD
 /* Small inputs of less than 8 bytes are handled separately.  This allows the
    main code to be sped up using unaligned loads since there are now at least
    8 bytes to be compared.  If the first 8 bytes are equal, align src1.
@@ -55,6 +56,29 @@
    src1 and src2 are unaligned, and mutually aligned inputs behave as if
    aligned.  After the main loop, process the last 8 bytes using unaligned
    accesses.  */
+=======
+WEAK(memcmp)
+	cbz	limit, .Lret0
+	eor	tmp1, src1, src2
+	tst	tmp1, #7
+	b.ne	.Lmisaligned8
+	ands	tmp1, src1, #7
+	b.ne	.Lmutual_align
+	sub	limit_wd, limit, #1 /* limit != 0, so no underflow.  */
+	lsr	limit_wd, limit_wd, #3 /* Convert to Dwords.  */
+	/*
+	* The input source addresses are at alignment boundary.
+	* Directly compare eight bytes each time.
+	*/
+.Lloop_aligned:
+	ldr	data1, [src1], #8
+	ldr	data2, [src2], #8
+.Lstart_realigned:
+	subs	limit_wd, limit_wd, #1
+	eor	diff, data1, data2	/* Non-zero if differences found.  */
+	csinv	endloop, diff, xzr, cs	/* Last Dword or differences.  */
+	cbz	endloop, .Lloop_aligned
+>>>>>>> v4.14.291
 
 .p2align 6
 WEAK(memcmp)

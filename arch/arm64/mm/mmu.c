@@ -579,6 +579,7 @@ early_param("rodata", parse_rodata);
 #ifdef CONFIG_UNMAP_KERNEL_AT_EL0
 static int __init map_entry_trampoline(void)
 {
+	int i;
 	extern char __entry_tramp_text_start[];
 
 	pgprot_t prot = rodata_enabled ? PAGE_KERNEL_ROX : PAGE_KERNEL_EXEC;
@@ -589,11 +590,15 @@ static int __init map_entry_trampoline(void)
 
 	/* Map only the text into the trampoline page table */
 	memset(tramp_pg_dir, 0, PGD_SIZE);
-	__create_pgd_mapping(tramp_pg_dir, pa_start, TRAMP_VALIAS, PAGE_SIZE,
-			     prot, pgd_pgtable_alloc, 0);
+	__create_pgd_mapping(tramp_pg_dir, pa_start, TRAMP_VALIAS,
+			     entry_tramp_text_size(), prot, pgd_pgtable_alloc,
+			     0);
 
 	/* Map both the text and data into the kernel page table */
-	__set_fixmap(FIX_ENTRY_TRAMP_TEXT, pa_start, prot);
+	for (i = 0; i < DIV_ROUND_UP(entry_tramp_text_size(), PAGE_SIZE); i++)
+		__set_fixmap(FIX_ENTRY_TRAMP_TEXT1 - i,
+			     pa_start + i * PAGE_SIZE, prot);
+
 	if (IS_ENABLED(CONFIG_RANDOMIZE_BASE)) {
 		extern char __entry_tramp_data_start[];
 
@@ -652,8 +657,8 @@ static void __init map_kernel(pgd_t *pgd)
 		 * entry instead.
 		 */
 		BUG_ON(!IS_ENABLED(CONFIG_ARM64_16K_PAGES));
-		set_pud(pud_set_fixmap_offset(pgd, FIXADDR_START),
-			__pud(__pa_symbol(bm_pmd) | PUD_TYPE_TABLE));
+		pud_populate(&init_mm, pud_set_fixmap_offset(pgd, FIXADDR_START),
+			     lm_alias(bm_pmd));
 		pud_clear_fixmap();
 	} else {
 		BUG();
@@ -1166,7 +1171,7 @@ int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node)
 				break;
 			}
 
-			set_pmd(pmd, __pmd(__pa(p) | PROT_SECT_NORMAL));
+			pmd_set_huge(pmd, __pa(p), __pgprot(PROT_SECT_NORMAL));
 		} else
 			vmemmap_verify((pte_t *)pmd, node, addr, next);
 	} while (addr = next, addr != end);
@@ -1364,35 +1369,51 @@ int __init arch_ioremap_pmd_supported(void)
 	return !IS_ENABLED(CONFIG_ARM64_PTDUMP_DEBUGFS);
 }
 
-int pud_set_huge(pud_t *pud, phys_addr_t phys, pgprot_t prot)
+int pud_set_huge(pud_t *pudp, phys_addr_t phys, pgprot_t prot)
 {
 	pgprot_t sect_prot = __pgprot(PUD_TYPE_SECT |
 					pgprot_val(mk_sect_prot(prot)));
 	pud_t new_pud = pfn_pud(__phys_to_pfn(phys), sect_prot);
 
 	/* Only allow permission changes for now */
+<<<<<<< HEAD
 	if (!pgattr_change_is_safe(READ_ONCE(pud_val(*pud)),
+=======
+	if (!pgattr_change_is_safe(READ_ONCE(pud_val(*pudp)),
+>>>>>>> v4.14.291
 				   pud_val(new_pud)))
 		return 0;
 
 	BUG_ON(phys & ~PUD_MASK);
+<<<<<<< HEAD
 	set_pud(pud, new_pud);
+=======
+	set_pud(pudp, new_pud);
+>>>>>>> v4.14.291
 	return 1;
 }
 
-int pmd_set_huge(pmd_t *pmd, phys_addr_t phys, pgprot_t prot)
+int pmd_set_huge(pmd_t *pmdp, phys_addr_t phys, pgprot_t prot)
 {
 	pgprot_t sect_prot = __pgprot(PMD_TYPE_SECT |
 					pgprot_val(mk_sect_prot(prot)));
 	pmd_t new_pmd = pfn_pmd(__phys_to_pfn(phys), sect_prot);
 
 	/* Only allow permission changes for now */
+<<<<<<< HEAD
 	if (!pgattr_change_is_safe(READ_ONCE(pmd_val(*pmd)),
+=======
+	if (!pgattr_change_is_safe(READ_ONCE(pmd_val(*pmdp)),
+>>>>>>> v4.14.291
 				   pmd_val(new_pmd)))
 		return 0;
 
 	BUG_ON(phys & ~PMD_MASK);
+<<<<<<< HEAD
 	set_pmd(pmd, new_pmd);
+=======
+	set_pmd(pmdp, new_pmd);
+>>>>>>> v4.14.291
 	return 1;
 }
 

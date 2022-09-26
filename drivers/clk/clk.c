@@ -44,6 +44,7 @@ static HLIST_HEAD(clk_root_list);
 static HLIST_HEAD(clk_orphan_list);
 static LIST_HEAD(clk_notifier_list);
 
+<<<<<<< HEAD
 struct clk_handoff_vdd {
 	struct list_head list;
 	struct clk_vdd_class *vdd_class;
@@ -62,6 +63,14 @@ static DEFINE_MUTEX(vdd_class_list_lock);
  */
 static LIST_HEAD(clk_rate_change_list);
 
+=======
+static struct hlist_head *all_lists[] = {
+	&clk_root_list,
+	&clk_orphan_list,
+	NULL,
+};
+
+>>>>>>> v4.14.291
 /***    private data structures    ***/
 
 struct clk_core {
@@ -2692,12 +2701,6 @@ static u32 debug_suspend;
 static DEFINE_MUTEX(clk_debug_lock);
 static HLIST_HEAD(clk_debug_list);
 
-static struct hlist_head *all_lists[] = {
-	&clk_root_list,
-	&clk_orphan_list,
-	NULL,
-};
-
 static struct hlist_head *orphan_list[] = {
 	&clk_orphan_list,
 	NULL,
@@ -3302,6 +3305,7 @@ static int clk_debug_create_one(struct clk_core *core, struct dentry *pdentry)
 
 	core->dentry = d;
 
+<<<<<<< HEAD
 	d = debugfs_create_file("clk_rate", 0444, core->dentry, core,
 			&clock_rate_fops);
 	if (!d)
@@ -3324,6 +3328,18 @@ static int clk_debug_create_one(struct clk_core *core, struct dentry *pdentry)
 
 	d = debugfs_create_u32("clk_phase", 0444, core->dentry,
 			(u32 *)&core->phase);
+=======
+	d = debugfs_create_ulong("clk_rate", 0444, core->dentry, &core->rate);
+	if (!d)
+		goto err_out;
+
+	d = debugfs_create_ulong("clk_accuracy", 0444, core->dentry,
+				 &core->accuracy);
+	if (!d)
+		goto err_out;
+
+	d = debugfs_create_u32("clk_phase", 0444, core->dentry, &core->phase);
+>>>>>>> v4.14.291
 	if (!d)
 		goto err_out;
 
@@ -3333,17 +3349,30 @@ static int clk_debug_create_one(struct clk_core *core, struct dentry *pdentry)
 		goto err_out;
 
 	d = debugfs_create_u32("clk_prepare_count", 0444, core->dentry,
+<<<<<<< HEAD
 			(u32 *)&core->prepare_count);
 	if (!d)
 		goto err_out;
 
 	d = debugfs_create_file("clk_enable_count", 0444, core->dentry,
 			core, &clock_enable_fops);
+=======
+			       &core->prepare_count);
+	if (!d)
+		goto err_out;
+
+	d = debugfs_create_u32("clk_enable_count", 0444, core->dentry,
+			       &core->enable_count);
+>>>>>>> v4.14.291
 	if (!d)
 		goto err_out;
 
 	d = debugfs_create_u32("clk_notifier_count", 0444, core->dentry,
+<<<<<<< HEAD
 			(u32 *)&core->notifier_count);
+=======
+			       &core->notifier_count);
+>>>>>>> v4.14.291
 	if (!d)
 		goto err_out;
 
@@ -3683,11 +3712,17 @@ static int __clk_core_init(struct clk_core *core)
 	if (core->flags & CLK_IS_CRITICAL) {
 		unsigned long flags;
 
-		clk_core_prepare(core);
+		ret = clk_core_prepare(core);
+		if (ret)
+			goto out;
 
 		flags = clk_enable_lock();
-		clk_core_enable(core);
+		ret = clk_core_enable(core);
 		clk_enable_unlock(flags);
+		if (ret) {
+			clk_core_unprepare(core);
+			goto out;
+		}
 	}
 
 	/*
@@ -3975,6 +4010,34 @@ static const struct clk_ops clk_nodrv_ops = {
 	.set_parent	= clk_nodrv_set_parent,
 };
 
+static void clk_core_evict_parent_cache_subtree(struct clk_core *root,
+						struct clk_core *target)
+{
+	int i;
+	struct clk_core *child;
+
+	for (i = 0; i < root->num_parents; i++)
+		if (root->parents[i] == target)
+			root->parents[i] = NULL;
+
+	hlist_for_each_entry(child, &root->children, child_node)
+		clk_core_evict_parent_cache_subtree(child, target);
+}
+
+/* Remove this clk from all parent caches */
+static void clk_core_evict_parent_cache(struct clk_core *core)
+{
+	struct hlist_head **lists;
+	struct clk_core *root;
+
+	lockdep_assert_held(&prepare_lock);
+
+	for (lists = all_lists; *lists; lists++)
+		hlist_for_each_entry(root, *lists, child_node)
+			clk_core_evict_parent_cache_subtree(root, core);
+
+}
+
 /**
  * clk_unregister - unregister a currently registered clock
  * @clk: clock to unregister
@@ -4012,6 +4075,8 @@ void clk_unregister(struct clk *clk)
 					  child_node)
 			clk_core_set_parent(child, NULL);
 	}
+
+	clk_core_evict_parent_cache(clk->core);
 
 	hlist_del_init(&clk->core->child_node);
 
@@ -4390,20 +4455,19 @@ int clk_notifier_register(struct clk *clk, struct notifier_block *nb)
 	/* search the list of notifiers for this clk */
 	list_for_each_entry(cn, &clk_notifier_list, node)
 		if (cn->clk == clk)
-			break;
+			goto found;
 
 	/* if clk wasn't in the notifier list, allocate new clk_notifier */
-	if (cn->clk != clk) {
-		cn = kzalloc(sizeof(*cn), GFP_KERNEL);
-		if (!cn)
-			goto out;
+	cn = kzalloc(sizeof(*cn), GFP_KERNEL);
+	if (!cn)
+		goto out;
 
-		cn->clk = clk;
-		srcu_init_notifier_head(&cn->notifier_head);
+	cn->clk = clk;
+	srcu_init_notifier_head(&cn->notifier_head);
 
-		list_add(&cn->node, &clk_notifier_list);
-	}
+	list_add(&cn->node, &clk_notifier_list);
 
+found:
 	ret = srcu_notifier_chain_register(&cn->notifier_head, nb);
 
 	clk->core->notifier_count++;
@@ -4428,32 +4492,28 @@ EXPORT_SYMBOL_GPL(clk_notifier_register);
  */
 int clk_notifier_unregister(struct clk *clk, struct notifier_block *nb)
 {
-	struct clk_notifier *cn = NULL;
-	int ret = -EINVAL;
+	struct clk_notifier *cn;
+	int ret = -ENOENT;
 
 	if (!clk || !nb)
 		return -EINVAL;
 
 	clk_prepare_lock();
 
-	list_for_each_entry(cn, &clk_notifier_list, node)
-		if (cn->clk == clk)
+	list_for_each_entry(cn, &clk_notifier_list, node) {
+		if (cn->clk == clk) {
+			ret = srcu_notifier_chain_unregister(&cn->notifier_head, nb);
+
+			clk->core->notifier_count--;
+
+			/* XXX the notifier code should handle this better */
+			if (!cn->notifier_head.head) {
+				srcu_cleanup_notifier_head(&cn->notifier_head);
+				list_del(&cn->node);
+				kfree(cn);
+			}
 			break;
-
-	if (cn->clk == clk) {
-		ret = srcu_notifier_chain_unregister(&cn->notifier_head, nb);
-
-		clk->core->notifier_count--;
-
-		/* XXX the notifier code should handle this better */
-		if (!cn->notifier_head.head) {
-			srcu_cleanup_notifier_head(&cn->notifier_head);
-			list_del(&cn->node);
-			kfree(cn);
 		}
-
-	} else {
-		ret = -ENOENT;
 	}
 
 	clk_prepare_unlock();

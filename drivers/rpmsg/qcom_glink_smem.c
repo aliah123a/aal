@@ -107,6 +107,7 @@ static void glink_smem_rx_peak(struct qcom_glink_pipe *np,
 		tail -= pipe->native.length;
 
 	len = min_t(size_t, count, pipe->native.length - tail);
+<<<<<<< HEAD
 	if (len) {
 		memcpy_fromio(data, pipe->fifo + tail, len);
 	}
@@ -114,6 +115,13 @@ static void glink_smem_rx_peak(struct qcom_glink_pipe *np,
 	if (len != count) {
 		memcpy_fromio(data + len, pipe->fifo, (count - len));
 	}
+=======
+	if (len)
+		memcpy_fromio(data, pipe->fifo + tail, len);
+
+	if (len != count)
+		memcpy_fromio(data + len, pipe->fifo, (count - len));
+>>>>>>> v4.14.291
 }
 
 static void glink_smem_rx_advance(struct qcom_glink_pipe *np,
@@ -126,7 +134,11 @@ static void glink_smem_rx_advance(struct qcom_glink_pipe *np,
 
 	tail += count;
 	if (tail >= pipe->native.length)
+<<<<<<< HEAD
 		tail %= pipe->native.length;
+=======
+		tail -= pipe->native.length;
+>>>>>>> v4.14.291
 
 	*pipe->tail = cpu_to_le32(tail);
 }
@@ -231,7 +243,11 @@ struct qcom_glink *qcom_glink_smem_register(struct device *parent,
 	ret = device_register(dev);
 	if (ret) {
 		pr_err("failed to register glink edge\n");
+<<<<<<< HEAD
 		kfree(dev);
+=======
+		put_device(dev);
+>>>>>>> v4.14.291
 		return ERR_PTR(ret);
 	}
 
@@ -313,7 +329,11 @@ struct qcom_glink *qcom_glink_smem_register(struct device *parent,
 
 	return glink;
 
+<<<<<<< HEAD
 unregister:
+=======
+err_put_dev:
+>>>>>>> v4.14.291
 	device_unregister(dev);
 
 	return ERR_PTR(ret);

@@ -148,7 +148,62 @@ static int __init of_free_phandle_cache(void)
 	kfree(phandle_cache);
 	phandle_cache = NULL;
 
+<<<<<<< HEAD
 	raw_spin_unlock_irqrestore(&devtree_lock, flags);
+=======
+int __of_add_property_sysfs(struct device_node *np, struct property *pp)
+{
+	int rc;
+
+	/* Important: Don't leak passwords */
+	bool secure = strncmp(pp->name, "security-", 9) == 0;
+
+	if (!IS_ENABLED(CONFIG_SYSFS))
+		return 0;
+
+	if (!of_kset || !of_node_is_attached(np))
+		return 0;
+
+	sysfs_bin_attr_init(&pp->attr);
+	pp->attr.attr.name = safe_name(&np->kobj, pp->name);
+	pp->attr.attr.mode = secure ? 0400 : 0444;
+	pp->attr.size = secure ? 0 : pp->length;
+	pp->attr.read = of_node_property_read;
+
+	rc = sysfs_create_bin_file(&np->kobj, &pp->attr);
+	WARN(rc, "error adding attribute %s to node %pOF\n", pp->name, np);
+	return rc;
+}
+
+int __of_attach_node_sysfs(struct device_node *np)
+{
+	const char *name;
+	struct kobject *parent;
+	struct property *pp;
+	int rc;
+
+	if (!of_kset)
+		return 0;
+
+	np->kobj.kset = of_kset;
+	if (!np->parent) {
+		/* Nodes without parents are new top level trees */
+		name = safe_name(&of_kset->kobj, "base");
+		parent = NULL;
+	} else {
+		name = safe_name(&np->parent->kobj, kbasename(np->full_name));
+		parent = &np->parent->kobj;
+	}
+	if (!name)
+		return -ENOMEM;
+	rc = kobject_add(&np->kobj, parent, "%s", name);
+	kfree(name);
+	if (rc)
+		return rc;
+
+	for_each_property_of_node(np, pp)
+		__of_add_property_sysfs(np, pp);
+>>>>>>> v4.14.291
 
 	return 0;
 }
@@ -1808,7 +1863,7 @@ struct device_node *of_find_next_cache_node(const struct device_node *np)
 	/* OF on pmac has nodes instead of properties named "l2-cache"
 	 * beneath CPU nodes.
 	 */
-	if (!strcmp(np->type, "cpu"))
+	if (IS_ENABLED(CONFIG_PPC_PMAC) && !strcmp(np->type, "cpu"))
 		for_each_child_of_node(np, child)
 			if (!strcmp(child->type, "cache"))
 				return child;

@@ -290,14 +290,33 @@ static void qcom_glink_channel_release(struct kref *ref)
 {
 	struct glink_channel *channel = container_of(ref, struct glink_channel,
 						     refcount);
+<<<<<<< HEAD
+=======
+	struct glink_core_rx_intent *intent;
+>>>>>>> v4.14.291
 	struct glink_core_rx_intent *tmp;
 	unsigned long flags;
 	int iid;
 
+<<<<<<< HEAD
 	CH_INFO(channel, "\n");
 	wake_up(&channel->intent_req_event);
 
 	spin_lock_irqsave(&channel->intent_lock, flags);
+=======
+	/* cancel pending rx_done work */
+	cancel_work_sync(&channel->intent_work);
+
+	spin_lock_irqsave(&channel->intent_lock, flags);
+	/* Free all non-reuse intents pending rx_done work */
+	list_for_each_entry_safe(intent, tmp, &channel->done_intents, node) {
+		if (!intent->reuse) {
+			kfree(intent->data);
+			kfree(intent);
+		}
+	}
+
+>>>>>>> v4.14.291
 	idr_for_each_entry(&channel->liids, tmp, iid) {
 		kfree(tmp->data);
 		kfree(tmp);
@@ -970,6 +989,7 @@ static int qcom_glink_rx_data(struct qcom_glink *glink, size_t avail)
 			dev_err(glink->dev,
 				"no intent found for channel %s intent %d",
 				channel->name, liid);
+			ret = -ENOENT;
 			goto advance_rx;
 		}
 	}
@@ -1821,6 +1841,7 @@ static void qcom_glink_work(struct work_struct *work)
 	}
 }
 
+<<<<<<< HEAD
 static ssize_t rpmsg_name_show(struct device *dev,
 			       struct device_attribute *attr, char *buf)
 {
@@ -1904,6 +1925,18 @@ static void qcom_glink_notif_reset(void *data)
 		wake_up(&channel->intent_req_event);
 	}
 	spin_unlock_irqrestore(&glink->idr_lock, flags);
+=======
+static void qcom_glink_cancel_rx_work(struct qcom_glink *glink)
+{
+	struct glink_defer_cmd *dcmd;
+	struct glink_defer_cmd *tmp;
+
+	/* cancel any pending deferred rx_work */
+	cancel_work_sync(&glink->rx_work);
+
+	list_for_each_entry_safe(dcmd, tmp, &glink->rx_queue, node)
+		kfree(dcmd);
+>>>>>>> v4.14.291
 }
 
 struct qcom_glink *qcom_glink_native_probe(struct device *dev,
@@ -2029,17 +2062,17 @@ void qcom_glink_native_remove(struct qcom_glink *glink)
 	struct glink_channel *channel;
 	int cid;
 	int ret;
-	unsigned long flags;
 
 	subsys_unregister_early_notifier(glink->name, XPORT_LAYER_NOTIF);
 	qcom_glink_notif_reset(glink);
 	disable_irq(glink->irq);
-	cancel_work_sync(&glink->rx_work);
+	qcom_glink_cancel_rx_work(glink);
 
 	ret = device_for_each_child(glink->dev, NULL, qcom_glink_remove_device);
 	if (ret)
 		dev_warn(glink->dev, "Can't remove GLINK devices: %d\n", ret);
 
+<<<<<<< HEAD
 	spin_lock_irqsave(&glink->idr_lock, flags);
 	idr_for_each_entry(&glink->lcids, channel, cid) {
 		spin_unlock_irqrestore(&glink->idr_lock, flags);
@@ -2051,6 +2084,8 @@ void qcom_glink_native_remove(struct qcom_glink *glink)
 
 	spin_lock_irqsave(&glink->idr_lock, flags);
 
+=======
+>>>>>>> v4.14.291
 	/* Release any defunct local channels, waiting for close-ack */
 	idr_for_each_entry(&glink->lcids, channel, cid) {
 		kref_put(&channel->refcount, qcom_glink_channel_release);
@@ -2063,13 +2098,20 @@ void qcom_glink_native_remove(struct qcom_glink *glink)
 		idr_remove(&glink->rcids, cid);
 	}
 
+	/* Release any defunct local channels, waiting for close-req */
+	idr_for_each_entry(&glink->rcids, channel, cid)
+		kref_put(&channel->refcount, qcom_glink_channel_release);
+
 	idr_destroy(&glink->lcids);
 	idr_destroy(&glink->rcids);
+<<<<<<< HEAD
 	spin_unlock_irqrestore(&glink->idr_lock, flags);
 
 	kthread_flush_worker(&glink->kworker);
 	kthread_stop(glink->task);
 	qcom_glink_pipe_reset(glink);
+=======
+>>>>>>> v4.14.291
 	mbox_free_channel(glink->mbox_chan);
 }
 EXPORT_SYMBOL_GPL(qcom_glink_native_remove);

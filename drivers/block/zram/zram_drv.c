@@ -431,13 +431,18 @@ static void reset_bdev(struct zram *zram)
 static ssize_t backing_dev_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
+	struct file *file;
 	struct zram *zram = dev_to_zram(dev);
-	struct file *file = zram->backing_dev;
 	char *p;
 	ssize_t ret;
 
 	down_read(&zram->init_lock);
+<<<<<<< HEAD
 	if (!zram->backing_dev) {
+=======
+	file = zram->backing_dev;
+	if (!file) {
+>>>>>>> v4.14.291
 		memcpy(buf, "none\n", 5);
 		up_read(&zram->init_lock);
 		return 5;
@@ -1123,10 +1128,14 @@ static ssize_t mm_stat_show(struct device *dev,
 			zram->limit_pages << PAGE_SHIFT,
 			max_used << PAGE_SHIFT,
 			(u64)atomic64_read(&zram->stats.same_pages),
+<<<<<<< HEAD
 			pool_stats.pages_compacted,
 			zram_dedup_dup_size(zram),
 			zram_dedup_meta_size(zram),
 			(u64)atomic64_read(&zram->stats.huge_pages));
+=======
+			atomic_long_read(&pool_stats.pages_compacted));
+>>>>>>> v4.14.291
 	up_read(&zram->init_lock);
 
 	return ret;
@@ -2153,7 +2162,8 @@ static ssize_t hot_add_show(struct class *class,
 		return ret;
 	return scnprintf(buf, PAGE_SIZE, "%d\n", ret);
 }
-static CLASS_ATTR_RO(hot_add);
+static struct class_attribute class_attr_hot_add =
+	__ATTR(hot_add, 0400, hot_add_show, NULL);
 
 static ssize_t hot_remove_store(struct class *class,
 			struct class_attribute *attr,

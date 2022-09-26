@@ -96,8 +96,11 @@ struct stmmac_priv {
 	struct net_device *dev;
 	struct device *device;
 	struct mac_device_info *hw;
+<<<<<<< HEAD
 
 	/* Mutex lock */
+=======
+>>>>>>> v4.14.291
 	struct mutex lock;
 
 	/* RX Queue */

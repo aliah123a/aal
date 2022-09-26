@@ -32,6 +32,7 @@ void nf_register_queue_handler(struct net *net, const struct nf_queue_handler *q
 void nf_unregister_queue_handler(struct net *net);
 void nf_reinject(struct nf_queue_entry *entry, unsigned int verdict);
 
+<<<<<<< HEAD
 #ifdef VENDOR_EDIT
 //Junyuan.Huang@PSW.CN.WiFi.Network.1471780, 2018/06/26,
 //Add for limit speed function
@@ -40,6 +41,9 @@ void nf_unregister_queue_imq_handler(void);
 #endif /* VENDOR_EDIT */
 
 void nf_queue_entry_get_refs(struct nf_queue_entry *entry);
+=======
+bool nf_queue_entry_get_refs(struct nf_queue_entry *entry);
+>>>>>>> v4.14.291
 void nf_queue_entry_release_refs(struct nf_queue_entry *entry);
 
 static inline void init_hashrandom(u32 *jhash_initval)

@@ -39,6 +39,7 @@
 #include <asm/atomic.h>
 #include <asm/barrier.h>
 #include <asm/bug.h>
+#include <asm/cpufeature.h>
 #include <asm/debug-monitors.h>
 #include <asm/esr.h>
 #include <asm/insn.h>
@@ -139,6 +140,7 @@ void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 
 	printk("Call trace:\n");
 	do {
+<<<<<<< HEAD
 		if (tsk != current && (cur_state != tsk->state
 			/*
 			 * We would not be printing backtrace for the task
@@ -156,6 +158,8 @@ void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 				tsk->comm);
 			break;
 		}
+=======
+>>>>>>> v4.14.291
 		/* skip until specified stack frame */
 		if (!skip) {
 			dump_backtrace_entry(frame.pc);
@@ -409,10 +413,9 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 	BUG_ON(!user_mode(regs));
 }
 
-int cpu_enable_cache_maint_trap(void *__unused)
+void cpu_enable_cache_maint_trap(const struct arm64_cpu_capabilities *__unused)
 {
 	config_sctlr_el1(SCTLR_EL1_UCI, 0);
-	return 0;
 }
 
 #define __user_cache_maint(insn, address, res)			\
@@ -741,7 +744,6 @@ asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
 		handler[reason], smp_processor_id(), esr,
 		esr_get_class_string(esr));
 
-	die("Oops - bad mode", regs, 0);
 	local_irq_disable();
 	panic("bad mode");
 }

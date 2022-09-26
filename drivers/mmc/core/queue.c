@@ -36,7 +36,7 @@ static int mmc_prep_request(struct request_queue *q, struct request *req)
 {
 	struct mmc_queue *mq = q->queuedata;
 
-	if (mq && (mmc_card_removed(mq->card) || mmc_access_rpmb(mq)))
+	if (mq && mmc_card_removed(mq->card))
 		return BLKPREP_KILL;
 
 	req->rq_flags |= RQF_DONTPREP;
@@ -357,6 +357,39 @@ static void mmc_request_fn(struct request_queue *q)
 		wake_up_process(mq->thread);
 }
 
+<<<<<<< HEAD
+=======
+static struct scatterlist *mmc_alloc_sg(int sg_len, gfp_t gfp)
+{
+	struct scatterlist *sg;
+
+	sg = kmalloc_array(sg_len, sizeof(*sg), gfp);
+	if (sg)
+		sg_init_table(sg, sg_len);
+
+	return sg;
+}
+
+static void mmc_queue_setup_discard(struct request_queue *q,
+				    struct mmc_card *card)
+{
+	unsigned max_discard;
+
+	max_discard = mmc_calc_max_discard(card);
+	if (!max_discard)
+		return;
+
+	queue_flag_set_unlocked(QUEUE_FLAG_DISCARD, q);
+	blk_queue_max_discard_sectors(q, max_discard);
+	q->limits.discard_granularity = card->pref_erase << 9;
+	/* granularity must not be greater than max. discard */
+	if (card->pref_erase > max_discard)
+		q->limits.discard_granularity = SECTOR_SIZE;
+	if (mmc_can_secure_erase_trim(card))
+		queue_flag_set_unlocked(QUEUE_FLAG_SECERASE, q);
+}
+
+>>>>>>> v4.14.291
 /**
  * mmc_init_request() - initialize the MMC-specific per-request data
  * @q: the request queue

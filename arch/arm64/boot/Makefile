@@ -18,6 +18,7 @@ include $(srctree)/arch/arm64/boot/dts/Makefile
 
 OBJCOPYFLAGS_Image :=-O binary -R .note -R .note.gnu.build-id -R .comment -S
 
+<<<<<<< HEAD
 targets := Image Image.bz2 Image.gz Image.lz4 Image.lzma Image.lzo dtbo.img
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES))
@@ -41,6 +42,9 @@ endif
 
 rtic_mp.dtb: vmlinux FORCE
 	$(DTC) -O dtb -o rtic_mp.dtb -b 0 $(DTC_FLAGS) rtic_mp.dts
+=======
+targets := Image Image.bz2 Image.gz Image.lz4 Image.lzma Image.lzo
+>>>>>>> v4.14.291
 
 $(obj)/Image: vmlinux FORCE
 	$(call if_changed,objcopy)
